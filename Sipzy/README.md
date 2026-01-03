@@ -1,370 +1,358 @@
-# X402 Next.js Solana Template
+<p align="center">
+  <img src="og-image.png" alt="Sipzy" width="600"/>
+</p>
 
-**A simple Next.js starter template with X402 payment protocol integration for Solana.**
+<h1 align="center">Sipzy</h1>
 
-This template demonstrates a streamlined implementation of the X402 payment protocol using the `x402-next` package, making it easy to add cryptocurrency payment gates to your Next.js applications.
+<p align="center">
+  <strong>Watch-to-Trade: The Creator Token Economy Platform</strong>
+</p>
 
-> ⚠️ **Using on Mainnet?** This template is configured for testnet (devnet) by default. To accept real payments on mainnet, you'll need to set up CDP API keys and configure a fee payer. See the [CDP X402 Mainnet Documentation](https://docs.cdp.coinbase.com/x402/quickstart-for-sellers#running-on-mainnet) for complete setup instructions.
+<p align="center">
+  A decentralized platform where fans can buy and sell creator tokens through linear bonding curves while watching YouTube content, with premium features gated via x402 micropayments.
+</p>
 
-## Table of Contents
-
-- [What is X402?](#what-is-x402)
-- [Features](#features)
-- [Getting Started](#getting-started)
-- [How It Works](#how-it-works)
-- [Project Structure](#project-structure)
-- [Configuration](#configuration)
-- [Usage](#usage)
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#how-it-works">How It Works</a> •
+  <a href="#tech-stack">Tech Stack</a> •
+  <a href="#getting-started">Getting Started</a> •
+  <a href="#architecture">Architecture</a> •
+  <a href="#api-reference">API</a> •
+  <a href="#contributing">Contributing</a>
+</p>
 
 ---
 
-## What is X402?
+## 🎯 Overview
 
-**X402** is an open payment protocol that uses HTTP status code **402 "Payment Required"** to enable seamless cryptocurrency payments for web content and APIs.
+**Sipzy** revolutionizes creator monetization by combining:
 
-### Key Benefits
+- **🎬 Watch-to-Trade** — Trade creator tokens while watching YouTube content
+- **📈 Linear Bonding Curves** — Fair, transparent pricing with `Price = (Supply × 0.0001) + 0.01 SOL`
+- **⚡ Solana Blinks** — Trade directly from X/Twitter through Solana Actions
+- **💰 x402 Micropayments** — Premium content access via HTTP 402 payment protocol
+- **🔗 On-chain Transparency** — All trades verified on Solana blockchain
 
-- **Direct Payments** - Accept cryptocurrency payments without third-party payment processors
-- **No Accounts** - No user registration or authentication required
-- **Blockchain-Verified** - Payments are verified directly on the Solana blockchain
-- **Simple Integration** - Add payment gates to any Next.js route with middleware
-- **Flexible Pricing** - Set different prices for different content
+---
 
-### How It Works
+## ✨ Features
+
+### Core Trading Engine
+- **Linear Bonding Curve** — Predictable pricing that increases with demand
+- **Instant Liquidity** — Buy and sell tokens anytime, no orderbooks
+- **1% Creator Fee** — Creators earn from every trade automatically
+- **Pool Per Video** — Each YouTube video has its own token pool
+
+### Solana Actions (Blinks)
+- **Shareable Trade Links** — Generate URLs for trading on any platform
+- **Twitter Integration** — Trade creator tokens directly from X/Twitter
+- **No Wallet Required** — Non-custodial trading via Action providers
+
+### x402 Payment Gates
+- **Micropayment Access** — Premium content for as low as $0.01
+- **USDC Payments** — Stable cryptocurrency payments on Solana
+- **Session Management** — Automatic access after payment verification
+
+### User Experience
+- **Wallet Integration** — Phantom, Solflare, and 20+ wallets supported
+- **Real-time Updates** — Live price and supply tracking
+- **Responsive Design** — Works on desktop and mobile
+
+---
+
+## 🔄 How It Works
+
+### Bonding Curve Trading
 
 ```
-1. User requests protected content
-2. Server responds with 402 Payment Required
-3. User makes payment via Coinbase Pay or crypto wallet
-4. User proves payment with transaction signature
-5. Server verifies on blockchain and grants access
+┌─────────────────────────────────────────────────────────────┐
+│                    BONDING CURVE FORMULA                     │
+│                                                              │
+│            Price = (Supply × 0.0001) + 0.01 SOL              │
+│                                                              │
+│  Supply: 0    → Price: 0.01 SOL                             │
+│  Supply: 100  → Price: 0.02 SOL                             │
+│  Supply: 1000 → Price: 0.11 SOL                             │
+│                                                              │
+│  📈 Price increases as more tokens are bought               │
+│  📉 Price decreases as tokens are sold back                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### User Flow
+
+```
+1. 🎥 User visits /watch/{youtube_id}
+2. 👛 Connects Solana wallet (Phantom/Solflare)
+3. 💱 Buys/sells creator tokens via bonding curve
+4. 💸 1% of each trade goes to creator wallet
+5. 🔗 Can share Blink URL for others to trade from X/Twitter
+```
+
+### Blink Integration
+
+```
+Share URL: https://sipzy.app/api/actions/trade?id=dQw4w9WgXcQ
+
+When shared on X/Twitter:
+┌─────────────────────────────────┐
+│  🎵 Trade Creator Tokens        │
+│                                 │
+│  Current Price: 0.015 SOL       │
+│  Supply: 50 tokens              │
+│                                 │
+│  [Buy 1] [Buy 5] [Buy 10]      │
+└─────────────────────────────────┘
 ```
 
 ---
 
-## Features
+## 🛠 Tech Stack
 
-- **X402 Payment Middleware** - Powered by `x402-next` package
-- **Solana Integration** - Uses Solana blockchain for payment verification
-- **Multiple Price Tiers** - Configure different prices for different routes
-- **Session Management** - Automatic session handling after payment
-- **Type-Safe** - Full TypeScript support with Viem types
-- **Next.js 16** - Built on the latest Next.js App Router
+| Layer | Technology |
+|-------|------------|
+| **Blockchain** | Solana (Devnet/Mainnet) |
+| **Smart Contract** | Anchor Framework (Rust) |
+| **Frontend** | Next.js 16, React 19, TypeScript |
+| **Styling** | Tailwind CSS 4 |
+| **Wallet** | Solana Wallet Adapter |
+| **Payments** | x402 Protocol (USDC) |
+| **Actions** | Solana Actions/Blinks |
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ or Bun
-- pnpm, npm, or yarn
-- A Solana wallet address to receive payments
+- Node.js 18+
+- pnpm 8+
+- Rust (latest stable)
+- Solana CLI 1.18+
+- Anchor CLI 0.30.1
 
-### Installation
+### Quick Start
 
 ```bash
-# Clone or create from template
-npx create-solana-dapp my-app --template Sipzy
-
-# Navigate to project
-cd my-app
+# Clone the repository
+git clone https://github.com/your-username/sipzy.git
+cd sipzy
 
 # Install dependencies
 pnpm install
 
-# Run development server
+# Copy environment file
+cp .env.example .env.local
+
+# Build the Anchor program
+anchor build
+
+# Run tests
+anchor test
+
+# Start development server
 pnpm dev
 ```
 
-Visit `http://localhost:3000` to see your app running.
+### Environment Setup
 
-### Test the Payment Flow
+Create `.env.local` with your configuration:
 
-1. Navigate to `http://localhost:3000`
-2. Click on "Access Cheap Content" or "Access Expensive Content"
-3. You'll be presented with a Coinbase Pay payment dialog
-4. Complete the payment
-5. Access is granted and you'll see the protected content
+```env
+# Solana Program ID (from anchor build)
+NEXT_PUBLIC_PROGRAM_ID=22RS3cJfjadwGqLdqCTJ4xfYRbjA5n4baamC28v8675r
 
----
+# Treasury wallet for fee collection
+NEXT_PUBLIC_TREASURY_ADDRESS=your_treasury_wallet
 
-## How It Works
+# RPC URL
+NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
 
-This template uses the `x402-next` package which provides middleware to handle the entire payment flow.
-
-### Middleware Configuration
-
-The core of the payment integration is in `middleware.ts`:
-
-```typescript
-import { Address } from 'viem'
-import { paymentMiddleware, Resource, Network } from 'x402-next'
-import { NextRequest } from 'next/server'
-
-// Your Solana wallet address that receives payments
-const address = 'CmGgLQL36Y9ubtTsy2zmE46TAxwCBm66onZmPPhUWNqv' as Address
-const network = 'solana-devnet' as Network
-const facilitatorUrl = 'https://x402.org/facilitator' as Resource
-const cdpClientKey = '3uyu43EHCwgVIQx6a8cIfSkxp6cXgU30'
-
-const x402PaymentMiddleware = paymentMiddleware(
-  address,
-  {
-    '/content/cheap': {
-      price: '$0.01',
-      config: {
-        description: 'Access to cheap content',
-      },
-      network,
-    },
-    '/content/expensive': {
-      price: '$0.25',
-      config: {
-        description: 'Access to expensive content',
-      },
-      network,
-    },
-  },
-  {
-    url: facilitatorUrl,
-  },
-  {
-    cdpClientKey,
-    appLogo: '/logos/x402-examples.png',
-    appName: 'x402 Demo',
-    sessionTokenEndpoint: '/api/x402/session-token',
-  },
-)
-
-export const middleware = (req: NextRequest) => {
-  const delegate = x402PaymentMiddleware as unknown as (
-    request: NextRequest,
-  ) => ReturnType<typeof x402PaymentMiddleware>
-  return delegate(req)
-}
-
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)', '/'],
-}
+# x402 Configuration
+NEXT_PUBLIC_RECEIVER_ADDRESS=your_receiver_wallet
+NEXT_PUBLIC_NETWORK=solana-devnet
+NEXT_PUBLIC_CDP_CLIENT_KEY=your_cdp_key
 ```
 
-### What Happens Under the Hood
+See [`.env.example`](.env.example) for all configuration options.
 
-1. **Request Interception** - Middleware checks if the requested route requires payment
-2. **Payment Check** - If the route is protected, middleware checks for valid payment session
-3. **402 Response** - If no valid payment, returns 402 with payment requirements
-4. **Coinbase Pay Widget** - User sees payment modal powered by Coinbase
-5. **Payment Verification** - After payment, transaction is verified on Solana blockchain via facilitator
-6. **Session Creation** - Valid payment creates a session token
-7. **Access Granted** - User can now access protected content
-
----
-
-## Project Structure
-
-```
-Sipzy/
-├── middleware.ts              # 🛡️  X402 payment middleware configuration
-├── app/
-│   ├── page.tsx              # 🏠 Homepage with links to protected content
-│   ├── layout.tsx            # 📐 Root layout
-│   ├── globals.css           # 🎨 Global styles
-│   └── content/
-│       └── [type]/
-│           └── page.tsx      # 🔒 Protected content pages
-├── components/
-│   └── cats-component.tsx    # 🐱 Example content component
-├── lib/                      # 📚 Utility functions (if needed)
-├── public/                   # 📁 Static assets
-└── package.json              # 📦 Dependencies
-```
-
----
-
-## Configuration
-
-### Environment Variables
-
-The template uses sensible defaults, but you can customize by creating a `.env.local` file:
+### Deploy to Devnet
 
 ```bash
-# Your Solana wallet address (where payments go)
-NEXT_PUBLIC_WALLET_ADDRESS=your_solana_address_here
+# Configure Solana CLI
+solana config set --url devnet
 
-# Network (solana-devnet or solana-mainnet-beta)
-NEXT_PUBLIC_NETWORK=solana-devnet
+# Airdrop SOL for deployment
+solana airdrop 2
 
-# Coinbase Pay Client Key (get from Coinbase Developer Portal)
-NEXT_PUBLIC_CDP_CLIENT_KEY=your_client_key_here
-
-# Facilitator URL (service that verifies payments)
-NEXT_PUBLIC_FACILITATOR_URL=https://x402.org/facilitator
+# Deploy program
+anchor deploy
 ```
-
-### Customizing Routes and Prices
-
-Edit `middleware.ts` to add or modify protected routes:
-
-```typescript
-const x402PaymentMiddleware = paymentMiddleware(
-  address,
-  {
-    '/premium': {
-      price: '$1.00',
-      config: {
-        description: 'Premium content access',
-      },
-      network: 'solana-mainnet-beta',
-    },
-    '/api/data': {
-      price: '$0.05',
-      config: {
-        description: 'API data access',
-      },
-      network: 'solana-mainnet-beta',
-    },
-  },
-  // ... rest of config
-)
-```
-
-### Network Selection
-
-You can use different networks:
-
-- `solana-devnet` - For testing (use test tokens)
-- `solana-mainnet-beta` - For production (real money!)
-- `solana-testnet` - Alternative test network
 
 ---
 
-## Usage
+## 📁 Architecture
 
-### Creating Protected Content
-
-Simply create pages under protected routes defined in your middleware:
-
-```tsx
-// app/content/premium/page.tsx
-export default async function PremiumPage() {
-  return (
-    <div>
-      <h1>Premium Content</h1>
-      <p>This content requires payment to access.</p>
-      {/* Your protected content here */}
-    </div>
-  )
-}
 ```
-
-### Adding New Price Tiers
-
-1. Add the route configuration in `middleware.ts`
-2. Create the corresponding page component
-3. Users will automatically be prompted to pay when accessing the route
-
-### Testing with Devnet
-
-When using `solana-devnet`:
-
-- Payments use test tokens (no real money)
-- Perfect for development and testing
-- Get test tokens from [Solana Faucet](https://faucet.solana.com/)
-
-### Going to Production
-
-To accept real payments:
-
-1. Change network to `solana-mainnet-beta` in `middleware.ts`
-2. Update your wallet address to your production wallet
-3. Test thoroughly before deploying!
-4. Consider implementing additional security measures
+sipzy/
+├── app/                          # Next.js App Router
+│   ├── api/
+│   │   └── actions/
+│   │       ├── route.ts          # Actions discovery
+│   │       └── trade/
+│   │           └── route.ts      # Blink trading endpoint
+│   ├── watch/
+│   │   └── [id]/
+│   │       ├── page.tsx          # Watch & trade page
+│   │       └── premium/
+│   │           └── page.tsx      # x402 gated content
+│   └── page.tsx                  # Landing page
+├── components/
+│   ├── providers/
+│   │   └── wallet-provider.tsx   # Solana wallet context
+│   ├── trading-sidebar.tsx       # Trading widget
+│   └── youtube-player.tsx        # Video embed
+├── lib/
+│   ├── idl/
+│   │   └── sipzy_vault.json      # Anchor IDL
+│   └── program.ts                # Program utilities
+├── programs/
+│   └── sipzy_vault/
+│       └── src/
+│           └── lib.rs            # Anchor program (Rust)
+├── tests/
+│   └── sipzy_vault.ts            # Integration tests
+├── middleware.ts                 # x402 payment middleware
+├── Anchor.toml                   # Anchor configuration
+└── package.json
+```
 
 ---
 
-## Dependencies
+## 📡 API Reference
 
-This template uses minimal dependencies:
+### Solana Actions Endpoints
+
+#### GET `/api/actions/trade`
+Returns action metadata for the trading interface.
 
 ```json
 {
-  "dependencies": {
-    "next": "16.0.0",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "viem": "^2.38.5",
-    "x402-next": "^0.7.1"
+  "icon": "https://sipzy.app/icon.png",
+  "title": "Trade Creator Tokens",
+  "description": "Buy or sell tokens on the bonding curve",
+  "label": "Trade",
+  "links": {
+    "actions": [
+      { "label": "Buy 1", "href": "/api/actions/trade?id={id}&action=buy&amount=1" },
+      { "label": "Buy 5", "href": "/api/actions/trade?id={id}&action=buy&amount=5" }
+    ]
   }
 }
 ```
 
-- **next** - Next.js framework
-- **react** / **react-dom** - React library
-- **viem** - Type-safe Ethereum/Solana types
-- **x402-next** - X402 payment middleware (handles all payment logic)
+#### POST `/api/actions/trade`
+Creates a transaction for buying/selling tokens.
+
+**Request:**
+```json
+{
+  "account": "user_wallet_pubkey"
+}
+```
+
+**Response:**
+```json
+{
+  "transaction": "base64_encoded_transaction",
+  "message": "Buy 5 tokens for 0.055 SOL"
+}
+```
 
 ---
 
-## Learn More
+## 🧪 Testing
 
-### X402 Protocol
+```bash
+# Run all tests
+anchor test
 
-- [X402 Specification](https://github.com/coinbase/x402) - Official protocol documentation
-- [X402 Next Package](https://www.npmjs.com/package/x402-next) - Middleware used in this template
+# Run specific test file
+pnpm test tests/sipzy_vault.ts
 
-### Solana
+# Run with verbose output
+anchor test -- --verbose
+```
 
-- [Solana Documentation](https://docs.solana.com/) - Official Solana docs
-- [Solana Explorer](https://explorer.solana.com/) - View transactions on-chain
+### Test Coverage
 
-### Coinbase Developer
-
-- [CDP Docs](https://docs.cdp.coinbase.com/) - Coinbase Developer documentation
-
----
-
-## Troubleshooting
-
-### Payment Not Working
-
-1. Check that your wallet address in `middleware.ts` is correct
-2. Verify you're using the correct network (devnet vs mainnet)
-3. Check browser console for errors
-4. Ensure Coinbase Pay client key is valid
-
-### 402 Errors Not Displaying
-
-1. Check middleware matcher configuration in `middleware.ts`
-2. Verify route paths match your page structure
-3. Clear Next.js cache: `rm -rf .next && pnpm dev`
-
-### Session Not Persisting
-
-1. Check that cookies are enabled in your browser
-2. Verify session token endpoint is configured
-3. Check for CORS issues if using custom domains
+| Test | Description |
+|------|-------------|
+| `Initializes a pool` | Creates new pool for YouTube video |
+| `Buys tokens` | Purchases tokens via bonding curve |
+| `Gets current price` | Reads price from curve |
+| `Sells tokens` | Sells tokens back to curve |
 
 ---
 
-## Support
+## 🔐 Security Considerations
 
-For issues specific to this template, please open an issue on the repository.
-
-For X402 protocol questions, refer to the [official documentation](https://github.com/coinbase/x402).
-
----
-
-## License
-
-MIT License - Feel free to use this template for your projects.
+- **Auditing** — Smart contract should be audited before mainnet deployment
+- **Rate Limiting** — Implement rate limits on API endpoints
+- **Input Validation** — All user inputs are validated on-chain
+- **PDA Security** — Pool accounts use Program Derived Addresses
+- **Overflow Protection** — All arithmetic uses checked operations
 
 ---
 
-## Contributing
+## 🗺 Roadmap
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- [x] Linear bonding curve implementation
+- [x] Solana Actions/Blinks support
+- [x] x402 micropayment integration
+- [x] Wallet adapter integration
+- [ ] Creator verification system
+- [ ] Multi-token support (SPL tokens)
+- [ ] Advanced analytics dashboard
+- [ ] Mobile app (React Native)
+- [ ] DAO governance for protocol upgrades
 
 ---
 
-**Built with ❤️ from [Kronos](https://www.kronos.build/)**
+## 🤝 Contributing
+
+Contributions are welcome! Please read our contributing guidelines before submitting PRs.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- [Solana](https://solana.com/) — High-performance blockchain
+- [Anchor](https://anchor-lang.com/) — Solana development framework
+- [x402](https://x402.org/) — HTTP payment protocol
+- [Coinbase](https://www.coinbase.com/) — CDP and payment infrastructure
+
+---
+
+<p align="center">
+  <strong>Built with ❤️ for the Creator Economy</strong>
+</p>
+
+<p align="center">
+  <a href="https://twitter.com/sipzy">Twitter</a> •
+  <a href="https://discord.gg/sipzy">Discord</a> •
+  <a href="https://sipzy.app">Website</a>
+</p>

@@ -3,16 +3,16 @@ seeds = true
 skip-lint = false
 
 [programs.devnet]
-sipzy_vault = "SipzyVault111111111111111111111111111111111"
+sipzy_vault = "22RS3cJfjadwGqLdqCTJ4xfYRbjA5n4baamC28v8675r"
 
 [programs.localnet]
-sipzy_vault = "SipzyVault111111111111111111111111111111111"
+sipzy_vault = "22RS3cJfjadwGqLdqCTJ4xfYRbjA5n4baamC28v8675r"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

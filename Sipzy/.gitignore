@@ -43,3 +43,19 @@ next-env.d.ts
 
 # x402 transaction storage
 .verified-transactions.json
+
+# Anchor / Solana
+.anchor/test-ledger/
+.anchor/program-logs/
+/test-ledger/
+/target/
+**/target/
+*.so
+Cargo.lock
+
+# Keypairs (NEVER commit private keys!)
+*-keypair.json
+!programs/*/src/**
+
+# Logs
+*.log

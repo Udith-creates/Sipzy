@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
-declare_id!("SipzyVault111111111111111111111111111111111");
+declare_id!("22RS3cJfjadwGqLdqCTJ4xfYRbjA5n4baamC28v8675r");
 
 /// Sipzy Vault Program
 /// Implements a Linear Bonding Curve for Creator Token Economy
@@ -44,15 +44,15 @@ pub mod sipzy_vault {
     pub fn buy_tokens(ctx: Context<BuyTokens>, amount: u64) -> Result<()> {
         require!(amount > 0, SipzyError::InvalidAmount);
         
-        let pool = &mut ctx.accounts.pool;
+        // Read current supply (immutable access first)
+        let start_supply = ctx.accounts.pool.circulating_supply;
+        let current_reserve = ctx.accounts.pool.total_reserve_sol;
+        let end_supply = start_supply.checked_add(amount).ok_or(SipzyError::Overflow)?;
         
         // Calculate total cost using linear bonding curve integral
         // For buying 'amount' tokens starting from current supply:
         // Total = sum of prices from supply to supply + amount
         // Price(n) = n * 100_000 + 10_000_000 lamports
-        let start_supply = pool.circulating_supply;
-        let end_supply = start_supply.checked_add(amount).ok_or(SipzyError::Overflow)?;
-        
         // Integral of linear function: sum from start to end-1
         // = amount * base_price + slope * (sum of i from start to end-1)
         // = amount * 10_000_000 + 100_000 * (start + start+1 + ... + end-1)
@@ -106,8 +106,9 @@ pub mod sipzy_vault {
             creator_fee,
         )?;
         
-        // Update pool state
-        pool.total_reserve_sol = pool.total_reserve_sol.checked_add(pool_deposit).ok_or(SipzyError::Overflow)?;
+        // Update pool state (mutable access after transfers)
+        let pool = &mut ctx.accounts.pool;
+        pool.total_reserve_sol = current_reserve.checked_add(pool_deposit).ok_or(SipzyError::Overflow)?;
         pool.circulating_supply = end_supply;
         
         emit!(TokensPurchased {
@@ -159,15 +160,8 @@ pub mod sipzy_vault {
         
         require!(pool.total_reserve_sol >= net_refund, SipzyError::InsufficientReserve);
         
-        // Transfer SOL from pool to seller using PDA authority
-        let youtube_id = pool.youtube_id.clone();
-        let bump = pool.bump;
-        let seeds = &[
-            b"sipzy_pool",
-            youtube_id.as_bytes(),
-            &[bump],
-        ];
-        let signer_seeds = &[&seeds[..]];
+        // Transfer SOL from pool to seller
+        // Note: Direct lamport manipulation is used here since pool is a PDA owned by this program
         
         **pool.to_account_info().try_borrow_mut_lamports()? -= net_refund;
         **ctx.accounts.seller.to_account_info().try_borrow_mut_lamports()? += net_refund;

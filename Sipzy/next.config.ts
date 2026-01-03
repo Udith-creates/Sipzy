@@ -37,7 +37,11 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  // Webpack config for Solana packages
+  // Turbopack config (Next.js 16 default)
+  turbopack: {
+    resolveExtensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
+  },
+  // Webpack config for Solana packages (fallback)
   webpack: (config) => {
     config.externals.push('pino-pretty', 'lokijs', 'encoding')
     return config
