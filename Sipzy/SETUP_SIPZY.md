@@ -1,6 +1,6 @@
 # Sipzy Setup Guide
 
-Complete setup instructions for the Sipzy Watch-to-Trade platform.
+Complete setup instructions for the Sipzy Dual-Token Creator Economy Platform.
 
 ---
 
@@ -15,43 +15,102 @@ Install the following before starting:
 | Rust | latest | [rustup.rs](https://rustup.rs/) |
 | Solana CLI | v1.18+ | [docs.solana.com](https://docs.solana.com/cli/install-solana-cli-tools) |
 | Anchor CLI | v0.30.1 | `cargo install --git https://github.com/coral-xyz/anchor anchor-cli --tag v0.30.1` |
+| PostgreSQL | v14+ | [postgresql.org](https://www.postgresql.org/download/) |
 
 ---
 
-## 🚀 Quick Start (Localnet)
+## 🚀 Quick Start
 
-### Step 1: Install Dependencies
+### Step 1: Clone & Install Dependencies
 
 ```bash
 cd Sipzy
 pnpm install
 ```
 
-### Step 2: Build the Anchor Program
+### Step 2: Set Up PostgreSQL Database
+
+#### Option A: Local PostgreSQL
 
 ```bash
-anchor build
+# Install PostgreSQL (Ubuntu/Debian)
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+
+# Start PostgreSQL
+sudo systemctl start postgresql
+
+# Create database
+sudo -u postgres psql
 ```
 
-### Step 3: Run Tests (includes local validator)
+```sql
+-- In PostgreSQL shell:
+CREATE DATABASE sipzy;
+CREATE USER sipzy_user WITH PASSWORD 'your_secure_password';
+GRANT ALL PRIVILEGES ON DATABASE sipzy TO sipzy_user;
+\q
+```
+
+#### Option B: Docker PostgreSQL
 
 ```bash
-anchor test
+docker run --name sipzy-postgres \
+  -e POSTGRES_DB=sipzy \
+  -e POSTGRES_USER=sipzy_user \
+  -e POSTGRES_PASSWORD=your_secure_password \
+  -p 5432:5432 \
+  -d postgres:14
 ```
 
-If all tests pass, your program is working! ✅
+#### Option C: Cloud PostgreSQL (Recommended for Production)
 
-### Step 4: Configure Environment
+Use services like:
+- [Supabase](https://supabase.com/) (Free tier available)
+- [Neon](https://neon.tech/) (Serverless PostgreSQL)
+- [Railway](https://railway.app/)
+- [PlanetScale](https://planetscale.com/) (MySQL alternative)
+
+### Step 3: Configure Environment Variables
 
 ```bash
 cp .env.example .env.local
 ```
 
-Edit `.env.local` with your values (see [Environment Variables Guide](#-environment-variables-guide) below).
+Edit `.env.local` with your values (see detailed guide below).
 
-### Step 5: Start Development Server
+### Step 4: Run Database Migrations
 
 ```bash
+# Generate Prisma client
+npx prisma generate
+
+# Run migrations
+npx prisma migrate dev --name init
+
+# (Optional) View database in browser
+npx prisma studio
+```
+
+### Step 5: Build Solana Program
+
+```bash
+anchor build
+```
+
+### Step 6: Start Development
+
+**Terminal 1 - Local Validator (for localnet):**
+```bash
+solana-test-validator
+```
+
+**Terminal 2 - Deploy & Run:**
+```bash
+# Deploy program
+anchor deploy --provider.cluster localnet
+
+# Start Next.js dev server
 pnpm dev
 ```
 
@@ -61,371 +120,388 @@ Visit `http://localhost:3000`
 
 ## 🔧 Environment Variables Guide
 
-Here's how to get each value for your `.env.local`:
-
-### For Localnet Development
+### Complete `.env.local` Example
 
 ```env
-# ========================================
-# SOLANA CONFIGURATION
-# ========================================
+# ============================================
+# DATABASE
+# ============================================
 
-# Your program ID (already set after anchor build)
+# PostgreSQL connection string
+# Format: postgresql://USER:PASSWORD@HOST:PORT/DATABASE
+DATABASE_URL="postgresql://sipzy_user:your_secure_password@localhost:5432/sipzy"
+
+# ============================================
+# SOLANA CONFIGURATION
+# ============================================
+
+# Program ID (generated after first `anchor build`)
 NEXT_PUBLIC_PROGRAM_ID=22RS3cJfjadwGqLdqCTJ4xfYRbjA5n4baamC28v8675r
 
-# Your wallet address (for receiving trading fees)
-# Get it by running: solana address
+# Treasury wallet (receives platform fees)
+# Get by running: solana address
 NEXT_PUBLIC_TREASURY_ADDRESS=<your_wallet_address>
 
-# LOCALNET RPC URL (local validator)
+# RPC URL
+# Localnet: http://127.0.0.1:8899
+# Devnet: https://api.devnet.solana.com
+# Mainnet: Use private RPC (Helius, QuickNode, etc.)
 NEXT_PUBLIC_RPC_URL=http://127.0.0.1:8899
 
-# Cluster setting
+# Cluster (localnet, devnet, mainnet-beta)
 NEXT_PUBLIC_CLUSTER=localnet
 
-# ========================================
-# x402 CONFIGURATION (Optional for localnet)
-# ========================================
+# ============================================
+# YOUTUBE OAUTH (Required for Creators)
+# ============================================
 
-# Same as treasury address
+# Get from Google Cloud Console
+YOUTUBE_CLIENT_ID=<your_google_client_id>
+YOUTUBE_CLIENT_SECRET=<your_google_client_secret>
+YOUTUBE_REDIRECT_URI=http://localhost:3000/api/auth/youtube/callback
+
+# Public YouTube API key (for fetching video info)
+YOUTUBE_API_KEY=<your_youtube_api_key>
+
+# ============================================
+# PINATA / IPFS (Token Metadata Storage)
+# ============================================
+
+# Get from https://app.pinata.cloud/
+PINATA_JWT=<your_pinata_jwt>
+NEXT_PUBLIC_PINATA_GATEWAY=gateway.pinata.cloud
+
+# ============================================
+# AUTHENTICATION
+# ============================================
+
+# Generate with: openssl rand -hex 32
+JWT_SECRET=<your_random_32_byte_hex_string>
+
+# Cron job authentication (for video sync)
+CRON_SECRET=<your_cron_secret>
+
+# ============================================
+# x402 CONFIGURATION (Optional - Premium Content)
+# ============================================
+
 NEXT_PUBLIC_RECEIVER_ADDRESS=<your_wallet_address>
-
-# For localnet, x402 won't work (needs real network)
-# Use devnet for testing x402 payments
 NEXT_PUBLIC_NETWORK=solana-devnet
-
 NEXT_PUBLIC_FACILITATOR_URL=https://x402.org/facilitator
-
-# Get from https://portal.cdp.coinbase.com/ (free)
 NEXT_PUBLIC_CDP_CLIENT_KEY=<your_cdp_key>
 
-# ========================================
+# ============================================
 # APP CONFIGURATION
-# ========================================
+# ============================================
 
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 NEXT_PUBLIC_APP_NAME=Sipzy
 ```
 
-### How to Get Each Value
+---
 
-| Variable | How to Get It |
-|----------|---------------|
-| `NEXT_PUBLIC_PROGRAM_ID` | Already set! Your program ID is `22RS3cJfjadwGqLdqCTJ4xfYRbjA5n4baamC28v8675r` |
-| `NEXT_PUBLIC_TREASURY_ADDRESS` | Run `solana address` in terminal |
-| `NEXT_PUBLIC_RPC_URL` | **Localnet:** `http://127.0.0.1:8899`<br>**Devnet:** `https://api.devnet.solana.com` |
-| `NEXT_PUBLIC_CLUSTER` | `localnet`, `devnet`, or `mainnet-beta` |
-| `NEXT_PUBLIC_RECEIVER_ADDRESS` | Same as treasury address (your wallet) |
-| `NEXT_PUBLIC_CDP_CLIENT_KEY` | See [Getting CDP Key](#getting-cdp-client-key) below |
+## 🎬 Setting Up YouTube OAuth
+
+### Step 1: Create Google Cloud Project
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project (e.g., "Sipzy")
+3. Enable the **YouTube Data API v3**:
+   - Go to "APIs & Services" → "Enable APIs and Services"
+   - Search for "YouTube Data API v3"
+   - Click "Enable"
+
+### Step 2: Configure OAuth Consent Screen
+
+1. Go to "APIs & Services" → "OAuth consent screen"
+2. Choose "External" user type
+3. Fill in app information:
+   - App name: Sipzy
+   - User support email: your email
+   - Developer contact: your email
+4. Add scopes:
+   - `https://www.googleapis.com/auth/youtube.readonly`
+   - `https://www.googleapis.com/auth/userinfo.profile`
+5. Add test users (your email) if in testing mode
+
+### Step 3: Create OAuth Credentials
+
+1. Go to "APIs & Services" → "Credentials"
+2. Click "Create Credentials" → "OAuth client ID"
+3. Application type: **Web application**
+4. Name: "Sipzy Web"
+5. Authorized redirect URIs:
+   - `http://localhost:3000/api/auth/youtube/callback` (development)
+   - `https://yourdomain.com/api/auth/youtube/callback` (production)
+6. Copy the **Client ID** and **Client Secret**
+
+### Step 4: Create API Key (for public video data)
+
+1. Go to "Credentials" → "Create Credentials" → "API Key"
+2. (Optional) Restrict to YouTube Data API v3
+3. Copy the API key
 
 ---
 
-## 🔑 Getting CDP Client Key
+## 📌 Setting Up Pinata (IPFS)
 
-The CDP (Coinbase Developer Platform) key is needed for x402 payments. Here's how to get one:
+### Step 1: Create Account
 
-1. Go to [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com/)
-2. Sign up or log in
-3. Create a new project
-4. Go to **API Keys** section
-5. Create a new API key
-6. Copy the **Client Key** (not the secret!)
+1. Go to [Pinata](https://app.pinata.cloud/)
+2. Sign up for a free account
 
-**Note:** For localnet testing without x402, you can skip this or use a placeholder.
+### Step 2: Generate JWT Token
 
----
+1. Go to "API Keys" section
+2. Click "New Key"
+3. Enable all permissions (or customize)
+4. Copy the **JWT** token
 
-## 🖥️ Running on Localnet
+### Step 3: Configure Gateway
 
-### Option A: Using `anchor test` (Recommended)
-
-This automatically starts a local validator, deploys your program, and runs tests:
-
-```bash
-anchor test
-```
-
-### Option B: Manual Setup
-
-**Terminal 1 - Start Local Validator:**
-```bash
-solana-test-validator
-```
-
-**Terminal 2 - Deploy and Run:**
-```bash
-# Configure for localnet
-solana config set --url localhost
-
-# Check your balance (should have SOL on localnet)
-solana balance
-
-# Deploy the program
-anchor deploy --provider.cluster localnet
-
-# Start the app
-pnpm dev
-```
+By default, use `gateway.pinata.cloud` or set up a dedicated gateway for production.
 
 ---
 
-## 🌐 Running on Devnet
+## 🔐 Authentication Flow
 
-### Step 1: Configure Solana CLI
+### Wallet Authentication (Users)
 
-```bash
-solana config set --url devnet
+```
+1. User clicks "Connect Wallet"
+2. Phantom/Solflare connects
+3. User clicks "Sign In"
+4. Frontend requests nonce from /api/auth/nonce
+5. User signs message with wallet
+6. Backend verifies signature
+7. JWT token issued, stored in cookie
 ```
 
-### Step 2: Create/Check Wallet
+### YouTube OAuth (Creators)
 
-```bash
-# Check if you have a wallet
-solana address
-
-# If not, create one
-solana-keygen new -o ~/.config/solana/id.json
 ```
-
-### Step 3: Get Devnet SOL
-
-```bash
-# Try CLI airdrop
-solana airdrop 2
-
-# If rate limited, use the web faucet:
-# https://faucet.solana.com
-# Paste your address from: solana address
-```
-
-### Step 4: Update Anchor.toml
-
-```toml
-[provider]
-cluster = "devnet"  # Change from "localnet"
-wallet = "~/.config/solana/id.json"
-```
-
-### Step 5: Deploy to Devnet
-
-```bash
-anchor deploy
-```
-
-### Step 6: Update .env.local
-
-```env
-NEXT_PUBLIC_RPC_URL=https://api.devnet.solana.com
-NEXT_PUBLIC_CLUSTER=devnet
-NEXT_PUBLIC_NETWORK=solana-devnet
+1. Creator clicks "Become Creator"
+2. Redirect to Google OAuth
+3. Creator grants YouTube access
+4. Callback receives tokens
+5. Fetch channel info from YouTube API
+6. Store in Creator database record
 ```
 
 ---
 
-## 📁 Project Structure
+## 💰 Dual Token System
+
+### $CREATOR Coins (Linear Curve)
+
+- **Formula:** `Price = Slope × Supply + BasePrice`
+- **Default Base:** 0.01 SOL
+- **Default Slope:** 0.0001 SOL per token
+- **Use Case:** Long-term equity in creator's career
+
+### $STREAM Coins (Exponential Curve)
+
+- **Formula:** `Price = BasePrice × (1 + GrowthRate)^Supply`
+- **Default Base:** 0.001 SOL
+- **Default Growth:** 5% per token
+- **Use Case:** Event-based hype for videos/streams
+
+### Fee Structure
+
+- **1% on every trade** sent to creator wallet
+- Creator receives fees from both their $CREATOR and all their $STREAM coins
+
+---
+
+## 🗃️ Database Schema Overview
 
 ```
-Sipzy/
-├── app/                          # Next.js pages
-│   ├── api/actions/              # Solana Blinks API
-│   │   ├── route.ts              # Actions discovery
-│   │   └── trade/route.ts        # Trading endpoint
-│   ├── watch/[id]/               # Watch & trade pages
-│   │   ├── page.tsx              # Main watch page
-│   │   └── premium/page.tsx      # x402 gated content
-│   └── page.tsx                  # Home page
-├── components/                   # React components
-│   ├── providers/
-│   │   └── wallet-provider.tsx   # Wallet adapter setup
-│   ├── trading-sidebar.tsx       # Buy/sell widget
-│   └── youtube-player.tsx        # Video embed
-├── lib/                          # Utilities
-│   ├── idl/sipzy_vault.json      # Program IDL
-│   └── program.ts                # Program helpers
-├── programs/sipzy_vault/         # Anchor program
-│   └── src/lib.rs                # Smart contract (Rust)
-├── tests/                        # Integration tests
-│   └── sipzy_vault.ts            # Test suite
-├── target/                       # Build output
-│   ├── deploy/                   # Deployed program files
-│   ├── idl/                      # Generated IDL
-│   └── types/                    # TypeScript types
-├── middleware.ts                 # x402 payment gate
-├── Anchor.toml                   # Anchor config
-├── .env.example                  # Environment template
-└── package.json                  # Dependencies
+User
+├── walletAddress (unique)
+├── holdings[] (token balances)
+├── transactions[] (trade history)
+└── creator? (if they're a creator)
+
+Creator
+├── channelId (YouTube)
+├── channelName
+├── coinCreated (bool)
+├── coinAddress (on-chain PDA)
+├── videos[] (detected videos)
+└── OAuth tokens
+
+Video
+├── videoId (YouTube)
+├── title, thumbnail
+├── status (PENDING/APPROVED/REJECTED)
+├── coinAddress (if approved)
+└── creator relation
+
+PoolStats
+├── poolAddress (on-chain)
+├── poolType (CREATOR/STREAM)
+├── price, volume, holders
+└── priceChange24h
 ```
+
+---
+
+## 📊 API Routes Reference
+
+### Authentication
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/auth/nonce` | GET | Get signing nonce |
+| `/api/auth/verify` | POST | Verify wallet signature |
+| `/api/auth/youtube` | GET | Start YouTube OAuth |
+| `/api/auth/youtube/callback` | GET | OAuth callback |
+| `/api/auth/logout` | POST | Clear session |
+
+### Creator
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/creator/profile` | GET | Get creator profile |
+| `/api/creator/profile` | PATCH | Update settings |
+| `/api/creator/videos` | GET | List videos |
+| `/api/creator/videos/[id]` | PATCH | Approve/reject video |
+
+### Discovery
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/discover/creators` | GET | Top creator coins |
+| `/api/discover/streams` | GET | Top stream coins |
+| `/api/discover/trending` | GET | Combined trending |
+| `/api/search` | GET | Search by URL/name |
+
+### Pools
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/pool/[address]` | GET | Get pool details |
+
+### Cron Jobs
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/cron/sync-videos` | POST | Sync new videos |
+| `/api/cron/update-stats` | POST | Update pool stats |
 
 ---
 
 ## 🧪 Testing
 
-### Run All Tests
+### Run Solana Tests
 
 ```bash
 anchor test
 ```
 
-### Expected Output
-
-```
-  sipzy_vault
-    ✔ Initializes a pool
-    ✔ Buys tokens from the bonding curve
-    ✔ Gets current token price
-    ✔ Sells tokens back to the curve
-
-  4 passing
-```
-
-### Test Individual Features
+### Test Database Connection
 
 ```bash
-# Just build (no deploy/test)
-anchor build
-
-# Deploy only
-anchor deploy --provider.cluster localnet
-
-# Run tests against existing deployment
-pnpm test
+npx prisma db push --force-reset
+npx prisma studio
 ```
 
----
+### Test API Endpoints
 
-## 📈 Bonding Curve Formula
+```bash
+# Health check
+curl http://localhost:3000/api/discover/trending
 
+# Search
+curl "http://localhost:3000/api/search?q=https://youtube.com/watch?v=dQw4w9WgXcQ"
 ```
-Price = (Supply × 0.0001) + 0.01 SOL
-```
-
-| Supply | Price (SOL) | Price (Lamports) |
-|--------|-------------|------------------|
-| 0 | 0.01 | 10,000,000 |
-| 10 | 0.011 | 11,000,000 |
-| 100 | 0.02 | 20,000,000 |
-| 1,000 | 0.11 | 110,000,000 |
-
-### Fee Structure
-
-- **1% Trade Fee** — Every buy/sell sends 1% to creator wallet
-- **x402 Premium Gate** — $0.01 USDC for premium content (optional)
-
----
-
-## 🔗 Solana Actions (Blinks)
-
-Share trading links that work on X/Twitter:
-
-```
-https://your-domain.com/api/actions/trade?id=<youtube_video_id>
-```
-
-### Example
-```
-https://sipzy.app/api/actions/trade?id=dQw4w9WgXcQ
-```
-
-When shared on X/Twitter, users see a trading card and can buy tokens directly!
 
 ---
 
 ## 🐛 Troubleshooting
 
-### "Connection refused" on localhost:8899
-
-The local validator isn't running. Start it:
-```bash
-solana-test-validator
-```
-
-Or use `anchor test` which starts it automatically.
-
-### "Insufficient funds" error
-
-**Localnet:** Local validator gives you free SOL. Check balance:
-```bash
-solana balance
-```
-
-**Devnet:** Get SOL from faucet:
-```bash
-solana airdrop 2
-# Or use: https://faucet.solana.com
-```
-
-### "Program not found" error
-
-The program isn't deployed to your current cluster:
-```bash
-# Check which cluster you're on
-solana config get
-
-# Deploy to that cluster
-anchor deploy --provider.cluster <cluster>
-```
-
-### x402 payments not working on localnet
-
-x402 requires a real Solana network (devnet/mainnet). For localnet:
-- Skip x402 testing, OR
-- Switch to devnet for x402 features
-
-### Wallet won't connect
-
-1. Make sure your wallet (Phantom/Solflare) is set to the same network
-2. For localnet: Use Phantom → Settings → Developer Settings → Change Network to Localhost
-3. Refresh the page
-
-### Anchor build fails
+### Database Connection Failed
 
 ```bash
-# Update Rust
-rustup update
+# Check PostgreSQL is running
+sudo systemctl status postgresql
 
-# Clean and rebuild
-anchor clean
-anchor build
+# Test connection
+psql -h localhost -U sipzy_user -d sipzy
 ```
+
+### YouTube OAuth Error
+
+- Check redirect URI matches exactly (including trailing slash)
+- Ensure API is enabled in Google Cloud Console
+- Check OAuth consent screen is configured
+
+### Prisma Migration Issues
+
+```bash
+# Reset database (WARNING: deletes all data)
+npx prisma migrate reset
+
+# Regenerate client
+npx prisma generate
+```
+
+### "Pool not found" Error
+
+- Ensure local validator is running: `solana-test-validator`
+- Check program is deployed: `anchor deploy`
+- Verify NEXT_PUBLIC_PROGRAM_ID matches deployed address
 
 ---
 
 ## 🚢 Production Deployment
 
-### 1. Deploy Program to Mainnet
+### 1. Deploy Database
+
+Use a managed PostgreSQL service (Supabase, Neon, etc.)
+
+### 2. Deploy Solana Program
 
 ```bash
 # Configure for mainnet
 solana config set --url mainnet-beta
 
-# Ensure you have SOL for deployment (~2-3 SOL)
-solana balance
-
-# Deploy
+# Deploy (requires ~2-3 SOL)
 anchor deploy --provider.cluster mainnet
 ```
 
-### 2. Update Environment
+### 3. Configure Production Environment
 
 ```env
-NEXT_PUBLIC_RPC_URL=https://api.mainnet-beta.solana.com
-NEXT_PUBLIC_CLUSTER=mainnet-beta
-NEXT_PUBLIC_NETWORK=solana-mainnet-beta
+DATABASE_URL="postgresql://..."
+NEXT_PUBLIC_RPC_URL="https://your-private-rpc.com"
+NEXT_PUBLIC_CLUSTER="mainnet-beta"
+JWT_SECRET="<secure-random-string>"
 ```
 
-### 3. Deploy Frontend
+### 4. Set Up Cron Jobs
 
-Deploy to Vercel, Netlify, or your preferred platform:
-- Add all environment variables
-- Update `NEXT_PUBLIC_BASE_URL` to your domain
+Use Vercel Cron, Railway Cron, or external services:
 
-### 4. Security Checklist
+```json
+// vercel.json
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-videos",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/update-stats",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
+```
+
+### 5. Security Checklist
 
 - [ ] Smart contract audited
 - [ ] Rate limiting on API routes
-- [ ] Error monitoring (Sentry, etc.)
-- [ ] SSL/HTTPS enabled
+- [ ] HTTPS enabled
 - [ ] Environment variables secured
+- [ ] YouTube OAuth in production mode
+- [ ] Database backups configured
 
 ---
 
@@ -433,9 +509,10 @@ Deploy to Vercel, Netlify, or your preferred platform:
 
 - [Solana Docs](https://docs.solana.com/)
 - [Anchor Book](https://www.anchor-lang.com/)
+- [Prisma Docs](https://www.prisma.io/docs)
+- [YouTube API Docs](https://developers.google.com/youtube/v3)
+- [Pinata Docs](https://docs.pinata.cloud/)
 - [x402 Protocol](https://x402.org/)
-- [Solana Actions](https://solana.com/docs/advanced/actions)
-- [Wallet Adapter](https://github.com/solana-labs/wallet-adapter)
 
 ---
 

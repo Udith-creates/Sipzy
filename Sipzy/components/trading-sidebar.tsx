@@ -6,13 +6,16 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { PublicKey, Transaction, SystemProgram } from '@solana/web3.js'
 import { BN } from '@coral-xyz/anchor'
 import {
-  derivePoolPDA,
+  deriveStreamPoolPDA,
+  deriveCreatorPoolPDA,
   fetchPoolState,
-  calculatePriceInSol,
   calculateBuyCost,
+  calculateSellRefund,
+  getCurrentPrice,
   PROGRAM_ID,
   LAMPORTS_PER_SOL,
   PoolState,
+  PoolType,
 } from '@/lib/program'
 
 // Helper to format numbers consistently (avoids hydration mismatch)
@@ -50,7 +53,8 @@ export const TradingSidebar: FC<TradingSidebarProps> = ({ youtubeId, creatorWall
   const fetchPool = useCallback(async () => {
     try {
       setLoading(true)
-      const state = await fetchPoolState(connection, youtubeId)
+      const [poolPDA] = deriveStreamPoolPDA(youtubeId)
+      const state = await fetchPoolState(connection, poolPDA)
       setPoolState(state)
     } catch (err) {
       console.error('Failed to fetch pool:', err)
@@ -67,13 +71,14 @@ export const TradingSidebar: FC<TradingSidebarProps> = ({ youtubeId, creatorWall
   }, [fetchPool])
 
   // Current price and supply
-  const currentSupply = poolState?.circulatingSupply.toNumber() ?? 0
-  const currentPrice = calculatePriceInSol(currentSupply)
-  const totalReserve = poolState ? poolState.totalReserveSol.toNumber() / LAMPORTS_PER_SOL : 0
+  const currentSupply = poolState?.totalSupply?.toNumber() ?? 0
+  const currentPrice = poolState ? getCurrentPrice(poolState) / LAMPORTS_PER_SOL : 0.01
+  const totalReserve = poolState ? poolState.reserveSol.toNumber() / LAMPORTS_PER_SOL : 0
 
   // Calculate costs
-  const buyCost = calculateBuyCost(currentSupply, buyAmount) / LAMPORTS_PER_SOL
-  const buyCostWithFee = buyCost * 1.01 // Include 1% fee
+  const buyCostData = poolState ? calculateBuyCost(poolState, buyAmount) : { total: buyAmount * 0.01 * LAMPORTS_PER_SOL }
+  const buyCost = buyCostData.total / LAMPORTS_PER_SOL
+  const buyCostWithFee = buyCost // Fee already included
 
   // Initialize pool (if not exists)
   const handleInitializePool = async () => {
@@ -87,7 +92,7 @@ export const TradingSidebar: FC<TradingSidebarProps> = ({ youtubeId, creatorWall
     setSuccess(null)
 
     try {
-      const [poolPDA] = derivePoolPDA(youtubeId)
+      const [poolPDA] = deriveStreamPoolPDA(youtubeId)
       
       // Build initialize instruction
       // Note: In production, use proper Anchor instruction building
@@ -137,7 +142,7 @@ export const TradingSidebar: FC<TradingSidebarProps> = ({ youtubeId, creatorWall
     setSuccess(null)
 
     try {
-      const [poolPDA] = derivePoolPDA(youtubeId)
+      const [poolPDA] = deriveStreamPoolPDA(youtubeId)
       
       const instruction = await buildBuyInstruction(
         publicKey,
@@ -175,7 +180,7 @@ export const TradingSidebar: FC<TradingSidebarProps> = ({ youtubeId, creatorWall
     setSuccess(null)
 
     try {
-      const [poolPDA] = derivePoolPDA(youtubeId)
+      const [poolPDA] = deriveStreamPoolPDA(youtubeId)
       
       const instruction = await buildSellInstruction(
         publicKey,

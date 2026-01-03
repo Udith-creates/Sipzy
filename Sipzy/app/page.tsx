@@ -1,178 +1,316 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import { SearchBar } from '@/components/search-bar'
+import { CoinCard } from '@/components/coin-card'
+import { WalletAuthButton } from '@/components/wallet-auth-button'
 
-export default function Home() {
-  const [videoUrl, setVideoUrl] = useState('')
-  const router = useRouter()
+interface PoolData {
+  poolAddress: string
+  poolType: string
+  identifier: string
+  displayName?: string
+  currentPrice: string
+  priceChange24h: number
+  totalSupply: string
+  holders: number
+  totalVolume24h: string
+  creator?: {
+    channelName: string
+    channelImage: string | null
+  }
+  video?: {
+    title: string
+    thumbnail: string
+    creator?: {
+      channelName: string
+    }
+  }
+}
 
-  const extractVideoId = (url: string): string | null => {
-    // Handle various YouTube URL formats
-    const patterns = [
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&\n?#]+)/,
-      /^([a-zA-Z0-9_-]{11})$/, // Direct video ID
-    ]
+export default function HomePage() {
+  const [topCreators, setTopCreators] = useState<PoolData[]>([])
+  const [topStreams, setTopStreams] = useState<PoolData[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<'creators' | 'streams'>('creators')
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [creatorsRes, streamsRes] = await Promise.all([
+          fetch('/api/discover/creators?limit=8'),
+          fetch('/api/discover/streams?limit=8'),
+        ])
+        
+        const creatorsData = await creatorsRes.json()
+        const streamsData = await streamsRes.json()
+        
+        setTopCreators(creatorsData.pools || [])
+        setTopStreams(streamsData.pools || [])
+      } catch (error) {
+        console.error('Failed to fetch data:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
     
-    for (const pattern of patterns) {
-      const match = url.match(pattern)
-      if (match) return match[1]
-    }
-    return null
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const videoId = extractVideoId(videoUrl)
-    if (videoId) {
-      router.push(`/watch/${videoId}`)
-    }
-  }
+    fetchData()
+  }, [])
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 bg-grid opacity-30" />
-      <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/20 rounded-full blur-[128px]" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-[128px]" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-[150px]" />
-
+    <div className="min-h-screen bg-black text-white">
       {/* Header */}
-      <header className="relative z-10 px-6 py-4">
-        <nav className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-black text-xl shadow-lg shadow-emerald-500/30 animate-float">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-xl border-b border-zinc-800">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-black text-lg shadow-lg shadow-emerald-500/20">
               S
             </div>
-            <span className="text-2xl font-bold gradient-text">Sipzy</span>
-          </div>
+            <span className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
+              Sipzy
+            </span>
+          </Link>
           
-          <div className="flex items-center gap-4">
-            <Link
-              href="/content/cheap"
-              className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition"
-            >
-              Demo Gate
+          <nav className="hidden md:flex items-center gap-6">
+            <Link href="/search" className="text-zinc-400 hover:text-white transition">
+              Explore
             </Link>
-            <WalletMultiButton className="!bg-gradient-to-r !from-emerald-500 !to-cyan-500 !rounded-xl !h-10 !px-4 !font-semibold !text-sm hover:!opacity-90 !transition" />
-          </div>
-        </nav>
+            <Link href="/dashboard" className="text-zinc-400 hover:text-white transition">
+              Dashboard
+            </Link>
+          </nav>
+          
+          <WalletAuthButton />
+        </div>
       </header>
 
       {/* Hero Section */}
-      <main className="relative z-10 px-6 pt-20 pb-32">
+      <section className="pt-32 pb-20 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900 border border-zinc-800 mb-8">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-sm text-zinc-400">Built on Solana Devnet</span>
-          </div>
-
-          {/* Main Headline */}
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            <span className="text-white">Watch.</span>
-            <span className="gradient-text"> Trade.</span>
-            <br />
-            <span className="text-white">Earn.</span>
+          <h1 className="text-5xl md:text-7xl font-bold mb-6">
+            <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-purple-500 bg-clip-text text-transparent">
+              Watch. Trade. Earn.
+            </span>
           </h1>
-
-          <p className="text-xl text-zinc-400 mb-12 max-w-2xl mx-auto leading-relaxed">
-            Sipzy transforms any YouTube video into a trading terminal. 
-            Buy creator tokens with bonding curve economics. 
-            Support creators. Get rewarded.
+          <p className="text-xl text-zinc-400 mb-10 max-w-2xl mx-auto">
+            The creator economy, tokenized. Buy $CREATOR coins for long-term support 
+            or $STREAM coins for viral moment hype. Every trade, every view, every moment matters.
           </p>
-
-          {/* URL Input */}
-          <form onSubmit={handleSubmit} className="max-w-2xl mx-auto mb-16">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-2xl blur-xl opacity-30" />
-              <div className="relative flex gap-3 p-3 bg-zinc-900 rounded-2xl border border-zinc-800">
-                <input
-                  type="text"
-                  value={videoUrl}
-                  onChange={(e) => setVideoUrl(e.target.value)}
-                  placeholder="Paste YouTube URL or video ID..."
-                  className="flex-1 bg-zinc-800 rounded-xl px-5 py-4 text-white placeholder-zinc-500 border border-zinc-700 focus:border-emerald-500 focus:outline-none transition"
-                />
-                <button
-                  type="submit"
-                  className="px-8 py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-semibold hover:opacity-90 transition shadow-lg shadow-emerald-500/30"
-                >
-                  Launch →
-                </button>
-              </div>
+          
+          <SearchBar className="max-w-2xl mx-auto" />
+          
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <div className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 rounded-full border border-purple-500/30">
+              <span className="text-purple-400 font-semibold">$CREATOR</span>
+              <span className="text-zinc-500 text-sm">Linear Curve</span>
             </div>
-          </form>
+            <div className="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 rounded-full border border-cyan-500/30">
+              <span className="text-cyan-400 font-semibold">$STREAM</span>
+              <span className="text-zinc-500 text-sm">Exponential Curve</span>
+            </div>
+          </div>
+        </div>
+      </section>
 
-          {/* Quick Links */}
-          <div className="flex flex-wrap justify-center gap-4 mb-20">
+      {/* Stats Banner */}
+      <section className="border-y border-zinc-800 bg-zinc-900/50">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="text-center">
+              <p className="text-3xl font-bold text-white">$0</p>
+              <p className="text-zinc-500 text-sm">Total Volume</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold text-white">0</p>
+              <p className="text-zinc-500 text-sm">Creators</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold text-white">0</p>
+              <p className="text-zinc-500 text-sm">Active Pools</p>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-bold text-white">0</p>
+              <p className="text-zinc-500 text-sm">Traders</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Leaderboard Section */}
+      <section className="py-16 px-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Tabs */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('creators')}
+                className={`px-5 py-2.5 rounded-xl font-semibold transition ${
+                  activeTab === 'creators'
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                $CREATOR Coins
+              </button>
+              <button
+                onClick={() => setActiveTab('streams')}
+                className={`px-5 py-2.5 rounded-xl font-semibold transition ${
+                  activeTab === 'streams'
+                    ? 'bg-cyan-500 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                }`}
+              >
+                $STREAM Coins
+              </button>
+            </div>
+            
             <Link
-              href="/watch/dQw4w9WgXcQ"
-              className="px-6 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 transition flex items-center gap-2"
+              href={activeTab === 'creators' ? '/search?type=creator' : '/search?type=stream'}
+              className="text-sm text-zinc-400 hover:text-emerald-400 transition"
             >
-              <span>🎵</span> Try Demo Video
-            </Link>
-            <Link
-              href="/api/actions/trade?id=dQw4w9WgXcQ"
-              className="px-6 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 transition flex items-center gap-2"
-            >
-              <span>⚡</span> View Blink API
+              View All →
             </Link>
           </div>
 
-          {/* Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800 card-hover">
-              <div className="w-14 h-14 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-4 mx-auto">
-                <svg className="w-7 h-7 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
+          {/* Grid */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="bg-zinc-900 rounded-2xl border border-zinc-800 p-5 animate-pulse">
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-14 h-14 rounded-xl bg-zinc-800"></div>
+                    <div className="flex-1">
+                      <div className="h-5 bg-zinc-800 rounded w-3/4 mb-2"></div>
+                      <div className="h-4 bg-zinc-800 rounded w-1/2"></div>
+                    </div>
+                  </div>
+                  <div className="h-8 bg-zinc-800 rounded mb-4"></div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="h-10 bg-zinc-800 rounded"></div>
+                    <div className="h-10 bg-zinc-800 rounded"></div>
+                    <div className="h-10 bg-zinc-800 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {(activeTab === 'creators' ? topCreators : topStreams).length > 0 ? (
+                (activeTab === 'creators' ? topCreators : topStreams).map((pool) => (
+                  <CoinCard
+                    key={pool.poolAddress}
+                    type={activeTab === 'creators' ? 'creator' : 'stream'}
+                    address={pool.poolAddress}
+                    identifier={pool.identifier}
+                    displayName={
+                      activeTab === 'creators'
+                        ? pool.creator?.channelName || pool.displayName || pool.identifier
+                        : pool.video?.title || pool.displayName || pool.identifier
+                    }
+                    image={
+                      activeTab === 'creators'
+                        ? pool.creator?.channelImage
+                        : pool.video?.thumbnail
+                    }
+                    currentPrice={parseInt(pool.currentPrice || '0')}
+                    priceChange24h={pool.priceChange24h || 0}
+                    totalSupply={pool.totalSupply || '0'}
+                    holders={pool.holders || 0}
+                    volume24h={pool.totalVolume24h || '0'}
+                    channelName={pool.video?.creator?.channelName}
+                  />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-16">
+                  <p className="text-zinc-500 text-lg mb-4">
+                    No {activeTab === 'creators' ? 'creator' : 'stream'} coins yet
+                  </p>
+                  <Link
+                    href="/dashboard"
+                    className="inline-block px-6 py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-xl font-semibold text-white hover:opacity-90 transition"
+                  >
+                    Be the first creator!
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="py-16 px-6 bg-zinc-900/50">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center p-8">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center text-2xl font-bold text-white mx-auto mb-6">
+                1
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Bonding Curve</h3>
-              <p className="text-zinc-400 text-sm">
-                Price increases with each purchase. Early supporters benefit from growth.
+              <h3 className="text-xl font-semibold text-white mb-3">Connect & Discover</h3>
+              <p className="text-zinc-400">
+                Connect your Solana wallet, search for your favorite creators or paste any YouTube video URL.
               </p>
             </div>
-
-            <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800 card-hover">
-              <div className="w-14 h-14 rounded-xl bg-cyan-500/10 flex items-center justify-center mb-4 mx-auto">
-                <svg className="w-7 h-7 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+            
+            <div className="text-center p-8">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-2xl font-bold text-white mx-auto mb-6">
+                2
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Creator Revenue</h3>
-              <p className="text-zinc-400 text-sm">
-                1% of every trade goes directly to creators. Instant settlement on Solana.
+              <h3 className="text-xl font-semibold text-white mb-3">Choose Your Coin</h3>
+              <p className="text-zinc-400">
+                Buy $CREATOR coins for steady growth or $STREAM coins for exponential hype on viral content.
               </p>
             </div>
-
-            <div className="p-6 rounded-2xl bg-zinc-900/50 border border-zinc-800 card-hover">
-              <div className="w-14 h-14 rounded-xl bg-purple-500/10 flex items-center justify-center mb-4 mx-auto">
-                <svg className="w-7 h-7 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
+            
+            <div className="text-center p-8">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-2xl font-bold text-white mx-auto mb-6">
+                3
               </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Shareable Blinks</h3>
-              <p className="text-zinc-400 text-sm">
-                Trade tokens directly from X/Twitter or Discord using Solana Actions.
+              <h3 className="text-xl font-semibold text-white mb-3">Trade & Earn</h3>
+              <p className="text-zinc-400">
+                Buy low, sell high. Early supporters benefit most from the bonding curve. 1% of every trade goes to creators.
               </p>
             </div>
           </div>
         </div>
-      </main>
+      </section>
+
+      {/* CTA for Creators */}
+      <section className="py-20 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl font-bold mb-6">
+            Are you a <span className="text-purple-400">Creator</span>?
+          </h2>
+          <p className="text-xl text-zinc-400 mb-8">
+            Link your YouTube channel, create your $CREATOR coin, and let your community invest in your success.
+            Every video can have its own $STREAM coin - you approve which ones go live.
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-block px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl font-semibold text-white text-lg hover:opacity-90 transition shadow-lg shadow-purple-500/20"
+          >
+            Join as Creator
+          </Link>
+        </div>
+      </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-zinc-800 px-6 py-8">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-zinc-500 text-sm">
-            Powered by Solana × x402 Protocol
+      <footer className="border-t border-zinc-800 py-12 px-6">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center font-bold text-black text-sm">
+              S
+            </div>
+            <span className="text-zinc-400">© 2024 Sipzy. Built on Solana.</span>
           </div>
-          <div className="flex items-center gap-6 text-sm text-zinc-500">
-            <span>Devnet MVP</span>
-            <span>•</span>
-            <span>Built for the Creator Economy</span>
+          
+          <div className="flex items-center gap-6">
+            <a href="#" className="text-zinc-400 hover:text-white transition">Docs</a>
+            <a href="#" className="text-zinc-400 hover:text-white transition">Twitter</a>
+            <a href="#" className="text-zinc-400 hover:text-white transition">Discord</a>
           </div>
         </div>
       </footer>

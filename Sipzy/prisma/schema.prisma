@@ -1,0 +1,259 @@
+// Sipzy Database Schema
+// PostgreSQL + Prisma for the dual-token platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USER & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  walletAddress String    @unique
+  nonce         String    @default(uuid()) // For wallet signature verification
+  
+  // Profile (optional)
+  displayName   String?
+  avatarUrl     String?
+  
+  // Relationships
+  creator       Creator?
+  holdings      Holding[]
+  transactions  Transaction[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([walletAddress])
+}
+
+// ============================================================================
+// CREATOR & YOUTUBE INTEGRATION
+// ============================================================================
+
+model Creator {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // YouTube Channel Data
+  channelId       String    @unique
+  channelName     String
+  channelImage    String?
+  channelBanner   String?
+  subscriberCount Int       @default(0)
+  videoCount      Int       @default(0)
+  
+  // OAuth Tokens (encrypted in production)
+  accessToken     String
+  refreshToken    String
+  tokenExpiry     DateTime
+  
+  // Creator Coin Status
+  coinCreated     Boolean   @default(false)
+  coinAddress     String?   // On-chain PDA address
+  metadataUri     String?   // IPFS URI
+  
+  // Settings
+  autoApproveVideos Boolean @default(false)
+  isVerified        Boolean @default(true)
+  
+  // Relationships
+  videos          Video[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([channelId])
+  @@index([coinAddress])
+}
+
+// ============================================================================
+// VIDEO & STREAM COINS
+// ============================================================================
+
+model Video {
+  id              String      @id @default(cuid())
+  videoId         String      @unique // YouTube video ID
+  creatorId       String
+  creator         Creator     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  
+  // Video Metadata
+  title           String
+  description     String?     @db.Text
+  thumbnail       String
+  duration        Int?        // Duration in seconds
+  viewCount       Int         @default(0)
+  likeCount       Int         @default(0)
+  publishedAt     DateTime
+  isLiveStream    Boolean     @default(false)
+  
+  // Stream Coin Status
+  status          VideoStatus @default(PENDING)
+  coinAddress     String?     // On-chain PDA address
+  metadataUri     String?     // IPFS URI
+  rejectedReason  String?
+  
+  // Stats (cached from chain)
+  tokenSupply     BigInt      @default(0)
+  reserveSol      BigInt      @default(0)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@index([videoId])
+  @@index([creatorId])
+  @@index([status])
+  @@index([coinAddress])
+}
+
+enum VideoStatus {
+  PENDING   // Detected, awaiting creator approval
+  APPROVED  // Creator approved, coin created
+  REJECTED  // Creator rejected
+  EXPIRED   // Video too old or no longer available
+}
+
+// ============================================================================
+// HOLDINGS & TRANSACTIONS
+// ============================================================================
+
+model Holding {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  poolType    PoolType
+  poolAddress String
+  identifier  String    // channel_id or video_id
+  amount      BigInt    @default(0)
+  
+  // Cached values
+  avgBuyPrice BigInt    @default(0)
+  totalCost   BigInt    @default(0)
+  
+  updatedAt   DateTime  @updatedAt
+  
+  @@unique([userId, poolAddress])
+  @@index([poolAddress])
+  @@index([poolType])
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  poolType    PoolType
+  poolAddress String
+  identifier  String          // channel_id or video_id
+  txType      TransactionType
+  
+  // Amounts (in smallest units)
+  tokenAmount BigInt          // Number of tokens
+  solAmount   BigInt          // SOL amount in lamports
+  fee         BigInt          // Fee paid to creator
+  pricePerToken BigInt        // Price at time of transaction
+  
+  // Solana transaction
+  signature   String          @unique
+  slot        BigInt?
+  blockTime   DateTime?
+  
+  createdAt   DateTime        @default(now())
+  
+  @@index([poolAddress])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([signature])
+}
+
+enum PoolType {
+  CREATOR
+  STREAM
+}
+
+enum TransactionType {
+  BUY
+  SELL
+}
+
+// ============================================================================
+// POOL STATISTICS (Aggregated Data)
+// ============================================================================
+
+model PoolStats {
+  id            String    @id @default(cuid())
+  poolAddress   String    @unique
+  poolType      PoolType
+  identifier    String    // channel_id or video_id
+  displayName   String?
+  
+  // Current State (synced from chain)
+  totalSupply   BigInt    @default(0)
+  reserveSol    BigInt    @default(0)
+  currentPrice  BigInt    @default(0)
+  
+  // Aggregated Stats
+  totalVolume24h  BigInt  @default(0)
+  totalVolumeAll  BigInt  @default(0)
+  totalTrades     Int     @default(0)
+  holders         Int     @default(0)
+  
+  // Price Changes
+  priceChange1h   Float   @default(0)
+  priceChange24h  Float   @default(0)
+  priceChange7d   Float   @default(0)
+  
+  // Market Data
+  marketCap       BigInt  @default(0)
+  allTimeHigh     BigInt  @default(0)
+  allTimeLow      BigInt  @default(0)
+  
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([poolType, totalVolume24h])
+  @@index([poolType, holders])
+  @@index([poolType, priceChange24h])
+}
+
+// ============================================================================
+// PRICE HISTORY (For Charts)
+// ============================================================================
+
+model PriceSnapshot {
+  id          String    @id @default(cuid())
+  poolAddress String
+  poolType    PoolType
+  
+  price       BigInt
+  supply      BigInt
+  reserve     BigInt
+  volume      BigInt    @default(0)
+  
+  timestamp   DateTime
+  
+  @@index([poolAddress, timestamp])
+  @@index([poolType, timestamp])
+}
+
+// ============================================================================
+// SYSTEM
+// ============================================================================
+
+model SyncState {
+  id              String    @id @default(cuid())
+  key             String    @unique // e.g., "video_sync", "stats_update"
+  lastSync        DateTime
+  lastProcessedId String?
+  metadata        Json?
+  
+  updatedAt       DateTime  @updatedAt
+}
