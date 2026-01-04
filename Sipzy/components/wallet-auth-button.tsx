@@ -14,6 +14,7 @@ export const WalletAuthButton: FC<WalletAuthButtonProps> = ({ onAuthSuccess }) =
   const [mounted, setMounted] = useState(false)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isCheckingSession, setIsCheckingSession] = useState(true)
   const [user, setUser] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -21,6 +22,46 @@ export const WalletAuthButton: FC<WalletAuthButtonProps> = ({ onAuthSuccess }) =
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Check existing session on mount and when wallet connects
+  useEffect(() => {
+    async function checkSession() {
+      if (!connected || !publicKey) {
+        setIsCheckingSession(false)
+        setIsAuthenticated(false)
+        setUser(null)
+        return
+      }
+
+      try {
+        const res = await fetch('/api/auth/session')
+        const data = await res.json()
+        
+        if (data.authenticated && data.user) {
+          // Verify the session is for the currently connected wallet
+          if (data.user.walletAddress === publicKey.toBase58()) {
+            setIsAuthenticated(true)
+            setUser(data.user)
+            onAuthSuccess?.(data.user)
+          } else {
+            // Session is for a different wallet - clear it
+            setIsAuthenticated(false)
+            setUser(null)
+          }
+        }
+      } catch (err) {
+        console.warn('Session check failed:', err)
+      } finally {
+        setIsCheckingSession(false)
+      }
+    }
+
+    if (mounted && connected) {
+      checkSession()
+    } else if (mounted) {
+      setIsCheckingSession(false)
+    }
+  }, [mounted, connected, publicKey, onAuthSuccess])
 
   const authenticate = useCallback(async () => {
     if (!publicKey || !signMessage) return
@@ -77,10 +118,13 @@ export const WalletAuthButton: FC<WalletAuthButtonProps> = ({ onAuthSuccess }) =
       }
     } catch (err: any) {
       console.error('Auth error:', err)
-      // On error, still allow basic wallet connection
-      if (publicKey) {
-        setIsAuthenticated(true)
-        setUser({ walletAddress: publicKey.toBase58(), displayName: null, isCreator: false })
+      // Don't set authenticated on user rejection
+      if (!err.message?.includes('User rejected')) {
+        // On other errors, still allow basic wallet connection
+        if (publicKey) {
+          setIsAuthenticated(true)
+          setUser({ walletAddress: publicKey.toBase58(), displayName: null, isCreator: false })
+        }
       }
       setError(err.message || 'Authentication failed')
     } finally {
@@ -99,6 +143,14 @@ export const WalletAuthButton: FC<WalletAuthButtonProps> = ({ onAuthSuccess }) =
     disconnect()
   }
 
+  // Clear error after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
+
   // Don't render anything on server to prevent hydration mismatch
   if (!mounted) {
     return (
@@ -110,6 +162,13 @@ export const WalletAuthButton: FC<WalletAuthButtonProps> = ({ onAuthSuccess }) =
   if (!connected) {
     return (
       <WalletMultiButton className="!bg-gradient-to-r !from-emerald-500 !to-cyan-500 !rounded-xl !h-11 !font-semibold hover:!opacity-90 !transition-opacity" />
+    )
+  }
+
+  // Still checking session
+  if (isCheckingSession) {
+    return (
+      <div className="h-11 w-40 bg-zinc-800 rounded-xl animate-pulse" />
     )
   }
 

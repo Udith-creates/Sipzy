@@ -20,3 +20,5 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 anchor-lang = "0.30.1"
 anchor-spl = "0.30.1"
 
+# Note: anchor-cli is version 0.32.1, but we use 0.30.1 libs for stability
+

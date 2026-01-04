@@ -1,12 +1,14 @@
+[toolchain]
+
 [features]
-seeds = true
+resolution = true
 skip-lint = false
 
 [programs.devnet]
 sipzy_vault = "22RS3cJfjadwGqLdqCTJ4xfYRbjA5n4baamC28v8675r"
 
 [programs.localnet]
-sipzy_vault = "22RS3cJfjadwGqLdqCTJ4xfYRbjA5n4baamC28v8675r"
+sipzy_vault = "Aa3NmVN4aHAbRRoR2kQm9xnUonkydrh96tcAa9riJwRP"
 
 [registry]
 url = "https://api.apr.dev"
@@ -17,4 +19,3 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "pnpm run test"
-

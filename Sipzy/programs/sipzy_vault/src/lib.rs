@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
-declare_id!("22RS3cJfjadwGqLdqCTJ4xfYRbjA5n4baamC28v8675r");
+declare_id!("Aa3NmVN4aHAbRRoR2kQm9xnUonkydrh96tcAa9riJwRP");
 
 /// Sipzy Vault Program - Dual Token Bonding Curve System
 /// 

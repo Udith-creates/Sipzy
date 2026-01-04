@@ -63,47 +63,264 @@
 
 ## 🔄 How It Works
 
-### Bonding Curve Trading
+### System Architecture Flow
 
+```mermaid
+flowchart TB
+    subgraph Users["👥 Users"]
+        Fan[("🎧 Fan/Investor")]
+        Creator[("🎬 Creator")]
+    end
+
+    subgraph Frontend["🖥️ Next.js Frontend"]
+        Landing["/ Landing Page"]
+        Dashboard["/dashboard Creator Panel"]
+        Watch["/watch/:id Video Page"]
+        Trade["/creator/:id Trading Page"]
+    end
+
+    subgraph Backend["⚙️ API Layer"]
+        Auth["/api/auth/* Wallet Auth"]
+        Actions["/api/actions/* Solana Blinks"]
+        CreatorAPI["/api/creator/* Profile/Videos"]
+        Discover["/api/discover/* Browse Content"]
+    end
+
+    subgraph Blockchain["⛓️ Solana Blockchain"]
+        Program["📜 Sipzy Vault Program"]
+        CreatorPool["Creator Pool PDA"]
+        StreamPool["Stream Pool PDA"]
+    end
+
+    subgraph External["🌐 External Services"]
+        YouTube["📺 YouTube API"]
+        Phantom["👛 Phantom Wallet"]
+        X402["💳 x402 Payments"]
+    end
+
+    Fan --> Landing
+    Fan --> Watch
+    Fan --> Trade
+    Creator --> Dashboard
+    
+    Dashboard --> Auth
+    Dashboard --> CreatorAPI
+    Dashboard --> YouTube
+    
+    Watch --> Discover
+    Trade --> Actions
+    Trade --> Program
+    
+    Actions --> Program
+    Program --> CreatorPool
+    Program --> StreamPool
+    
+    Phantom --> Program
+    X402 --> Backend
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    BONDING CURVE FORMULA                     │
-│                                                              │
-│            Price = (Supply × 0.0001) + 0.01 SOL              │
-│                                                              │
-│  Supply: 0    → Price: 0.01 SOL                             │
-│  Supply: 100  → Price: 0.02 SOL                             │
-│  Supply: 1000 → Price: 0.11 SOL                             │
-│                                                              │
-│  📈 Price increases as more tokens are bought               │
-│  📉 Price decreases as tokens are sold back                 │
-└─────────────────────────────────────────────────────────────┘
+
+### Creator Onboarding Flow
+
+```mermaid
+flowchart LR
+    subgraph Step1["1️⃣ Connect"]
+        A1[Visit /dashboard] --> A2[Connect Phantom Wallet]
+        A2 --> A3[Sign Authentication Message]
+    end
+
+    subgraph Step2["2️⃣ Link YouTube"]
+        B1[Click Connect YouTube] --> B2[OAuth Authorization]
+        B2 --> B3[Grant Channel Access]
+        B3 --> B4[Fetch Channel Data]
+    end
+
+    subgraph Step3["3️⃣ Create Coin"]
+        C1[Click Create $CREATOR Coin] --> C2[Build Transaction]
+        C2 --> C3[Sign with Wallet]
+        C3 --> C4[Initialize Pool on Solana]
+        C4 --> C5[✅ Coin Live!]
+    end
+
+    Step1 --> Step2 --> Step3
+
+    style C5 fill:#10b981,color:#fff
 ```
 
-### User Flow
+### Token Trading Flow
 
+```mermaid
+sequenceDiagram
+    participant User as 👤 User
+    participant App as 🖥️ Sipzy App
+    participant Wallet as 👛 Phantom
+    participant Solana as ⛓️ Solana
+
+    User->>App: Select token amount to buy
+    App->>App: Calculate cost via bonding curve
+    App->>User: Display: "Buy 10 tokens for 0.15 SOL"
+    User->>App: Confirm purchase
+    App->>Wallet: Request transaction signature
+    Wallet->>User: "Approve transaction?"
+    User->>Wallet: ✅ Approve
+    Wallet->>Solana: Submit signed transaction
+    Solana->>Solana: Execute buy_tokens instruction
+    Solana->>Solana: Update pool state (supply, reserve)
+    Solana->>Solana: Transfer 1% fee to creator
+    Solana-->>App: Transaction confirmed
+    App-->>User: 🎉 "You now own 10 tokens!"
 ```
-1. 🎥 User visits /watch/{youtube_id}
-2. 👛 Connects Solana wallet (Phantom/Solflare)
-3. 💱 Buys/sells creator tokens via bonding curve
-4. 💸 1% of each trade goes to creator wallet
-5. 🔗 Can share Blink URL for others to trade from X/Twitter
+
+### Bonding Curve Mechanics
+
+```mermaid
+flowchart TB
+    subgraph Formula["📐 Linear Bonding Curve"]
+        F1["<b>Price = Base + (Supply × Slope)</b>"]
+        F2["Base Price: 0.01 SOL"]
+        F3["Slope: 0.0001 SOL/token"]
+    end
+
+    subgraph Example["📊 Price Examples"]
+        E1["Supply: 0 → Price: 0.0100 SOL"]
+        E2["Supply: 100 → Price: 0.0200 SOL"]
+        E3["Supply: 500 → Price: 0.0600 SOL"]
+        E4["Supply: 1000 → Price: 0.1100 SOL"]
+    end
+
+    subgraph Mechanics["⚙️ How It Works"]
+        M1["🟢 BUY: User pays SOL → Receives tokens"]
+        M2["Price increases with each purchase"]
+        M3["🔴 SELL: User returns tokens → Receives SOL"]
+        M4["Price decreases with each sale"]
+    end
+
+    Formula --> Example
+    Example --> Mechanics
+
+    style F1 fill:#8b5cf6,color:#fff
 ```
 
-### Blink Integration
+### Solana Blinks (Actions) Flow
 
+```mermaid
+flowchart LR
+    subgraph Share["📤 Share"]
+        S1["User copies Blink URL"]
+        S2["Posts to X/Twitter"]
+    end
+
+    subgraph Display["🖼️ Display"]
+        D1["Twitter unfurls URL"]
+        D2["Shows trading card UI"]
+        D3["Buy 1 / Buy 5 / Buy 10 buttons"]
+    end
+
+    subgraph Execute["⚡ Execute"]
+        E1["Viewer clicks Buy button"]
+        E2["Wallet popup opens"]
+        E3["User signs transaction"]
+        E4["Trade executes on Solana"]
+    end
+
+    Share --> Display --> Execute
+
+    style E4 fill:#10b981,color:#fff
 ```
-Share URL: https://sipzy.app/api/actions/trade?id=dQw4w9WgXcQ
 
-When shared on X/Twitter:
-┌─────────────────────────────────┐
-│  🎵 Trade Creator Tokens        │
-│                                 │
-│  Current Price: 0.015 SOL       │
-│  Supply: 50 tokens              │
-│                                 │
-│  [Buy 1] [Buy 5] [Buy 10]      │
-└─────────────────────────────────┘
+### x402 Premium Content Flow
+
+```mermaid
+sequenceDiagram
+    participant User as 👤 User
+    participant App as 🖥️ Sipzy
+    participant Middleware as 🔒 x402 Middleware
+    participant Payment as 💳 Payment Provider
+
+    User->>App: Request premium content
+    App->>Middleware: Check access
+    Middleware->>Middleware: No valid session found
+    Middleware-->>User: 402 Payment Required
+    User->>Payment: Pay 0.01 USDC
+    Payment->>Payment: Process payment on Solana
+    Payment-->>Middleware: Payment confirmed
+    Middleware->>Middleware: Create access session
+    Middleware-->>App: Grant access
+    App-->>User: 🎬 Premium content unlocked!
+```
+
+### Pool State Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> Uninitialized: Program deployed
+    
+    Uninitialized --> Active: initialize_creator_pool()
+    Uninitialized --> Active: initialize_stream_pool()
+    
+    Active --> Active: buy_tokens()
+    Active --> Active: sell_tokens()
+    
+    Active --> Paused: pause_pool() [Admin only]
+    Paused --> Active: resume_pool() [Admin only]
+    
+    note right of Active
+        Pool is tradeable
+        - Users can buy/sell
+        - Prices update dynamically
+        - Fees collected on each trade
+    end note
+    
+    note right of Paused
+        Trading halted
+        - Emergency freeze
+        - Maintenance mode
+    end note
+```
+
+### Database Entity Relationships
+
+```mermaid
+erDiagram
+    User ||--o{ Creator : "owns"
+    Creator ||--o{ Video : "uploads"
+    Creator ||--o| PoolStats : "has coin"
+    Video ||--o| PoolStats : "has coin"
+    
+    User {
+        string id PK
+        string walletAddress UK
+        string nonce
+        string displayName
+        datetime createdAt
+    }
+    
+    Creator {
+        string id PK
+        string userId FK
+        string channelId UK
+        string channelName
+        int subscriberCount
+        boolean coinCreated
+        string coinAddress
+    }
+    
+    Video {
+        string id PK
+        string videoId UK
+        string creatorId FK
+        string title
+        string status
+        string coinAddress
+    }
+    
+    PoolStats {
+        string id PK
+        string poolAddress UK
+        string poolType
+        float currentPrice
+        int totalSupply
+        float totalVolume24h
+    }
 ```
 
 ---

@@ -14,8 +14,10 @@ interface Props {
 
 export const SolanaWalletProvider: FC<Props> = ({ children }) => {
   const endpoint = useMemo(() => {
-    // Use devnet for MVP
-    return process.env.NEXT_PUBLIC_RPC_URL || clusterApiUrl('devnet')
+    // Use localnet for development, devnet for testing
+    const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || clusterApiUrl('devnet')
+    console.log('Using RPC endpoint:', rpcUrl)
+    return rpcUrl
   }, [])
 
   const wallets = useMemo(
@@ -26,8 +28,25 @@ export const SolanaWalletProvider: FC<Props> = ({ children }) => {
     []
   )
 
+  // Connection config for better reliability
+  const connectionConfig = useMemo(() => {
+    // For localhost, use port 8900 for WebSocket (solana-test-validator default)
+    let wsEndpoint: string | undefined
+    if (endpoint.includes('127.0.0.1:8899') || endpoint.includes('localhost:8899')) {
+      wsEndpoint = endpoint.replace('http', 'ws').replace('8899', '8900')
+    } else if (endpoint.startsWith('http')) {
+      wsEndpoint = endpoint.replace('http', 'ws')
+    }
+    
+    return {
+      commitment: 'confirmed' as const,
+      confirmTransactionInitialTimeout: 60000, // 60 seconds
+      wsEndpoint,
+    }
+  }, [endpoint])
+
   return (
-    <ConnectionProvider endpoint={endpoint}>
+    <ConnectionProvider endpoint={endpoint} config={connectionConfig}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           {children}

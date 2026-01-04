@@ -3,13 +3,21 @@ import { BN } from '@coral-xyz/anchor'
 
 // Program ID
 export const PROGRAM_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_PROGRAM_ID || '22RS3cJfjadwGqLdqCTJ4xfYRbjA5n4baamC28v8675r'
+  process.env.NEXT_PUBLIC_PROGRAM_ID || 'Aa3NmVN4aHAbRRoR2kQm9xnUonkydrh96tcAa9riJwRP'
 )
 
 // Pool types
 export enum PoolType {
   Creator = 0,
   Stream = 1,
+}
+
+// Instruction discriminators from IDL
+export const DISCRIMINATORS = {
+  initializeCreatorPool: Buffer.from([60, 170, 63, 129, 229, 100, 8, 105]),
+  initializeStreamPool: Buffer.from([202, 112, 19, 109, 93, 207, 46, 244]),
+  buyTokens: Buffer.from([189, 21, 230, 133, 247, 2, 110, 42]),
+  sellTokens: Buffer.from([114, 242, 25, 12, 62, 126, 92, 2]),
 }
 
 // Constants (matching lib.rs)
@@ -60,6 +68,158 @@ export function deriveStreamPoolPDA(videoId: string): [PublicKey, number] {
     [Buffer.from('stream_pool'), Buffer.from(videoId)],
     PROGRAM_ID
   )
+}
+
+/**
+ * Serialize a string for Borsh encoding (4-byte length prefix + UTF-8 bytes)
+ */
+function serializeString(str: string): Buffer {
+  const bytes = Buffer.from(str, 'utf8')
+  const lenBuf = Buffer.alloc(4)
+  lenBuf.writeUInt32LE(bytes.length)
+  return Buffer.concat([lenBuf, bytes])
+}
+
+/**
+ * Serialize Option<u64>
+ */
+function serializeOptionU64(value: bigint | null): Buffer {
+  if (value === null) {
+    return Buffer.from([0])
+  }
+  const buf = Buffer.alloc(9)
+  buf[0] = 1
+  buf.writeBigUInt64LE(value, 1)
+  return buf
+}
+
+/**
+ * Serialize u64
+ */
+function serializeU64(value: bigint): Buffer {
+  const buf = Buffer.alloc(8)
+  buf.writeBigUInt64LE(value)
+  return buf
+}
+
+/**
+ * Build initialize creator pool instruction
+ */
+export function buildInitializeCreatorPoolInstruction(
+  poolPDA: PublicKey,
+  creatorWallet: PublicKey,
+  authority: PublicKey,
+  channelId: string,
+  channelName: string,
+  metadataUri: string,
+  basePrice: bigint | null = null,
+  slope: bigint | null = null
+): TransactionInstruction {
+  const data = Buffer.concat([
+    DISCRIMINATORS.initializeCreatorPool,
+    serializeString(channelId),
+    serializeString(channelName),
+    serializeString(metadataUri),
+    serializeOptionU64(basePrice),
+    serializeOptionU64(slope),
+  ])
+
+  return new TransactionInstruction({
+    keys: [
+      { pubkey: poolPDA, isSigner: false, isWritable: true },
+      { pubkey: creatorWallet, isSigner: false, isWritable: false },
+      { pubkey: authority, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    programId: PROGRAM_ID,
+    data,
+  })
+}
+
+/**
+ * Build initialize stream pool instruction
+ */
+export function buildInitializeStreamPoolInstruction(
+  poolPDA: PublicKey,
+  creatorWallet: PublicKey,
+  authority: PublicKey,
+  videoId: string,
+  parentChannelId: string,
+  metadataUri: string,
+  basePrice: bigint | null = null,
+  growthRate: bigint | null = null
+): TransactionInstruction {
+  const data = Buffer.concat([
+    DISCRIMINATORS.initializeStreamPool,
+    serializeString(videoId),
+    serializeString(parentChannelId),
+    serializeString(metadataUri),
+    serializeOptionU64(basePrice),
+    serializeOptionU64(growthRate),
+  ])
+
+  return new TransactionInstruction({
+    keys: [
+      { pubkey: poolPDA, isSigner: false, isWritable: true },
+      { pubkey: creatorWallet, isSigner: false, isWritable: false },
+      { pubkey: authority, isSigner: true, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    programId: PROGRAM_ID,
+    data,
+  })
+}
+
+/**
+ * Build buy tokens instruction
+ */
+export function buildBuyTokensInstruction(
+  poolPDA: PublicKey,
+  trader: PublicKey,
+  creatorWallet: PublicKey,
+  amount: bigint
+): TransactionInstruction {
+  const data = Buffer.concat([
+    DISCRIMINATORS.buyTokens,
+    serializeU64(amount),
+  ])
+
+  return new TransactionInstruction({
+    keys: [
+      { pubkey: poolPDA, isSigner: false, isWritable: true },
+      { pubkey: trader, isSigner: true, isWritable: true },
+      { pubkey: creatorWallet, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    programId: PROGRAM_ID,
+    data,
+  })
+}
+
+/**
+ * Build sell tokens instruction
+ */
+export function buildSellTokensInstruction(
+  poolPDA: PublicKey,
+  trader: PublicKey,
+  creatorWallet: PublicKey,
+  amount: bigint
+): TransactionInstruction {
+  const data = Buffer.concat([
+    DISCRIMINATORS.sellTokens,
+    serializeU64(amount),
+  ])
+
+  return new TransactionInstruction({
+    keys: [
+      { pubkey: poolPDA, isSigner: false, isWritable: true },
+      { pubkey: trader, isSigner: true, isWritable: true },
+      { pubkey: creatorWallet, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    programId: PROGRAM_ID,
+    data,
+  })
 }
 
 /**
@@ -292,53 +452,18 @@ export async function fetchPoolState(
 }
 
 /**
- * Build initialize creator pool instruction data
+ * Check if a pool exists
  */
-export function buildInitializeCreatorPoolData(
-  channelId: string,
-  channelName: string,
-  metadataUri: string,
-  basePrice: number | null,
-  slope: number | null
-): Buffer {
-  // Discriminator from IDL (will need to update after rebuild)
-  const discriminator = Buffer.from([/* TBD after anchor build */])
-  
-  // Serialize arguments
-  const channelIdBytes = Buffer.from(channelId, 'utf8')
-  const channelIdLen = Buffer.alloc(4)
-  channelIdLen.writeUInt32LE(channelIdBytes.length)
-  
-  const channelNameBytes = Buffer.from(channelName, 'utf8')
-  const channelNameLen = Buffer.alloc(4)
-  channelNameLen.writeUInt32LE(channelNameBytes.length)
-  
-  const metadataUriBytes = Buffer.from(metadataUri, 'utf8')
-  const metadataUriLen = Buffer.alloc(4)
-  metadataUriLen.writeUInt32LE(metadataUriBytes.length)
-  
-  // Option<u64> for base_price
-  const basePriceOption = Buffer.alloc(9)
-  if (basePrice !== null) {
-    basePriceOption[0] = 1
-    basePriceOption.writeBigUInt64LE(BigInt(basePrice), 1)
+export async function poolExists(
+  connection: Connection,
+  poolAddress: PublicKey
+): Promise<boolean> {
+  try {
+    const accountInfo = await connection.getAccountInfo(poolAddress)
+    return accountInfo !== null
+  } catch {
+    return false
   }
-  
-  // Option<u64> for slope
-  const slopeOption = Buffer.alloc(9)
-  if (slope !== null) {
-    slopeOption[0] = 1
-    slopeOption.writeBigUInt64LE(BigInt(slope), 1)
-  }
-  
-  return Buffer.concat([
-    discriminator,
-    channelIdLen, channelIdBytes,
-    channelNameLen, channelNameBytes,
-    metadataUriLen, metadataUriBytes,
-    basePriceOption,
-    slopeOption,
-  ])
 }
 
 /**
