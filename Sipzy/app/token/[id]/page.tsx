@@ -669,7 +669,7 @@ export default function TokenDetailPage({ params }: { params: Promise<{ id: stri
                     isTrading || 
                     tradeAmount <= 0 || 
                     (tradeAction === 'sell' && userBalance < tradeAmount) ||
-                    (tradeAction === 'buy' && tradePreview && userSolBalance < (tradePreview.totalCost || 0))
+                    !!(tradeAction === 'buy' && tradePreview && userSolBalance < (tradePreview.totalCost || 0))
                   }
                   className={`w-full py-4 rounded-xl font-semibold text-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
                     tradeAction === 'buy'
